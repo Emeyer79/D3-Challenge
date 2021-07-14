@@ -1,130 +1,154 @@
-////////////////////////////////////////////////////////////////////////////////////////
-/// This script is for the required portion of the homework.  The index.html references
-/// it in line 57.
-////////////////////////////////////////////////////////////////////////////////////////
-
-
-////////////////////////////////////////////////////////////////////////////////////////
-/// This first section sets up the charting area
-///////////////////////////////////////////////////////////////////////////////////////
-
-// Define svg element width and height
+// @TODO: YOUR CODE HERE!
 var svgWidth = 960;
-var svgHeight = 500;
+var svgHeight = 700;
 
-// Define margins
 var margin = {
   top: 20,
   right: 40,
   bottom: 60,
-  left: 50
+  left: 100
 };
 
-// Define chart width and height using margins
-var chartWidth = svgWidth - margin.left - margin.right;
-var chartHeight = svgHeight - margin.top - margin.bottom;
+var width = svgWidth - margin.left - margin.right;
+var height = svgHeight - margin.top - margin.bottom;
 
-// Create an SVG wrapper within the scatter element, append an Chart group that will hold our chart, 
-// and shift the latter by left and top margins.
+// Create an SVG wrapper, append an SVG group that will hold our chart, and shift the latter by left and top margins.
 var svg = d3.select("#scatter")
   .append("svg")
   .attr("width", svgWidth)
   .attr("height", svgHeight);
 
-// Create chart group to hold the chart
-var chartGroup = svg.append("g")
+  var chartGroup = svg.append("g")
   .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
-////////////////////////////////////////////////////////////////////////////////////////
-/// This next section reads in the data and creates the chart
-///////////////////////////////////////////////////////////////////////////////////////
+//columns from data.csv:
+//id,state,abbr,poverty,povertyMoe,age,ageMoe,income,incomeMoe,healthcare,healthcareLow,healthcareHigh,obesity,
+//obesityLow,obesityHigh,smokes,smokesLow,smokesHigh,-0.385218228
 
-// Read in data from csv file
-d3.csv("./assets/data/data.csv").then(function(healthData) {
-    var stateAbbr = healthData.map(data => data.abbr);
+
+// Import Data from csv
+d3.csv("assets/data/data.csv").then( healthData => {
+  // Parse Data & Cast as numbers
+  healthData.forEach( data => {
+      data.state = data.state
+      data.poverty = +data.poverty
+      data.healthcare= +data.healthcare
+      data.abbr = data.abbr
+      });
+
+  //Create scale functions
+  var xLinearScale = d3.scaleLinear()
+    .domain([8, d3.max(healthData, d => d.poverty)])
+    .range([0, width]);
+
+  var yLinearScale = d3.scaleLinear()
+    .domain([3, d3.max(healthData, d => d.healthcare)])
+    .range([height, 0]);
   
-    // convert the strings to numeric values
-    healthData.forEach(function(data) {
-        data.poverty = +data.poverty;
-        data.age = +data.age;
-        data.income = +data.income;
-        data.healthcare = +data.healthcare;
-        data.obesity = +data.obesity;
-        data.smokes = +data.smokes;
+  //Create axis functions
+  var bottomAxis = d3.axisBottom(xLinearScale);
+  var leftAxis = d3.axisLeft(yLinearScale);
+
+  //Append Axes to the chart
+  chartGroup.append("g")
+    .attr("transform", `translate(0, ${height})`)
+    .call(bottomAxis);
+
+  chartGroup.append("g")
+    .call(leftAxis);
+
+  //Create Circles
+  var circlesGroup = chartGroup.selectAll("circle")
+    .data(healthData)
+    .enter()
+    .append("circle")
+    .attr("cx", d => xLinearScale(d.poverty))
+    .attr("cy", d => yLinearScale(d.healthcare))
+    .attr("r", "15")
+    .attr("fill", "purple")
+    .style("text-anchor", "middle")
+    .attr("opacity", ".75");
+
+  //append text to all circles
+  var circlesGroup = chartGroup.selectAll()
+    .data(healthData)
+    .enter()
+    .append("text")
+    .attr("x", d => xLinearScale(d.poverty))
+    .attr("y", d => yLinearScale(d.healthcare))
+    .style("font-size", "13px")
+    .style("text-anchor", "middle")
+    .style('fill', 'white')
+    .text(d => (d.abbr))
+
+// ===============================
+// ===============================
+
+// Adding Tooltips  
+// Initialize toolTip
+  var toolTip = d3.tip()
+    .attr("class", "toolTip")
+    .offset([80, -60])
+    .html( function (d) {
+      return (`${d.state}<br>Poverty: ${d.poverty}%<br>HealthCare: ${d.healthcare}%`);
     });
 
-    // Define x and y scales based on the poverty and healthcare data
-    // I add 2 to the max to extend the scale a bit, so I can match the solution chart axis
-    var xLinearScale = d3.scaleLinear()
-      .domain([8, d3.max(healthData, d => d.poverty)+2])
-      .range([0, chartWidth]);
+//Create tooltip in the chart
+  chartGroup.call(toolTip);
 
-    // I add 2 to the max to extend the scale a bit, so I can match the solution chart axis
-    var yLinearScale = d3.scaleLinear()
-      .domain([4, d3.max(healthData, d => d.healthcare)+2])
-      .range([chartHeight, 0]);
+//Create event listeners to display and hide the tooltip
+var toolTip = d3.select("body").append("div")
+// .attr("class", "tooltip");
 
-    // Define bottom and left axis
-    var bottomAxis = d3.axisBottom(xLinearScale).tickValues([10,12,14,16,18,20,22]);
-    var leftAxis = d3.axisLeft(yLinearScale).tickValues([6,8,10,12,14,16,18,20,22,24,26]);
-  
-    // Append axes to the chart area
-    chartGroup.append("g")
-        .attr("transform", `translate(0, ${chartHeight})`)
-        .call(bottomAxis);
-  
-    chartGroup.append("g")
-        .call(leftAxis);
-    
-    // Create circles that will make up the symbols in the scatter chart
-    // Bind the data to the circle elements
-    var circlesGroup = chartGroup.selectAll("circle")
-      .data(healthData)
-      .enter()
-      .append("circle")
-      .attr("cx", d => xLinearScale(d.poverty))
-      .attr("cy", d => yLinearScale(d.healthcare))
-      .attr("r", "9")
-      .attr("fill", "lightblue")
-      .attr("opacity", "1");
+// circlesGroup.on("mouseover", function(data) {
+//   toolTip.style("display", "block");
+//   console.log(d);
+//   console.log(i);
+//   // toolTip.html(`Pizzas eaten: <strong>${pizzasEatenByMonth[i]}</strong>`)
+//   toolTip.html(function (d) {
+//           return (`${d.state}<br>Poverty: ${d.poverty}%<br>HealthCare
+//           : ${d.healthcare}%`);
+// })
 
+// circlesGroup.on("click", data => {
+//     toolTip.show(data, this);
+//   });
 
-    // Add the x-axis label
+  // .on mouseover event
+
+  // .on mouseout event
+  .on("mouseout", (data, index) => {
+      toolTip.hide(data);
+    });
+
+    // .on('mouseover', toolTip.show(data));
+  // .on("mouseover", (data, index) => {
+  //   toolTip.show(data);
+  // });
+  //Create axes labels
     chartGroup.append("text")
-        .attr("transform", `translate(${chartWidth / 2}, ${chartHeight + margin.top + 15})`)
-        .attr("text-anchor", "middle")
-        .attr("font-size", "16px")
-        .attr("fill", "black")
-        .attr("font-weight", "500")
-        .text("In Poverty (%)");
+    .attr("transform", "rotate(-90)")
+    .attr("y", 0 - margin.left + 40)
+    .attr("x", -50 - (height / 2))
+    .attr("dy", "1em")
+    .attr("class", "axisText")
+    .attr("font-family", "sans-serif")
+    .attr("font-size", "20px")
+    .style('stroke', 'Black')
+    .text("Lacks Healthcare %");
 
-    // Add the y-axis label
     chartGroup.append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("y", 0 - margin.left + 0)
-        .attr("x", 0 - (chartHeight / 2 + margin.top))
-        .attr("dy", "1em")
-        .attr("font-size", "16px")
-        .attr("font-weight", "500")
-        .classed("axis-text", true)
-        .text("Lack Healthcare (%)");
+    .attr("transform", `translate(${width / 2}, ${height + margin.top + 30})`)
+    .attr("class", "axisText")
+    .attr("font-family", "sans-serif")
+    .attr("font-size", "20px")
+    .style('stroke', 'Black')
+    .text("Poverty %");
 
-    // Add state abbreviations to bubbles
-    // I selectAll 'label' here to make a holder for the text.  I couldn't use a text element
-    // as it would bind the data to other text items in the html file
-    var labelGroup = chartGroup.selectAll("label")
-        .data(healthData)
-        .enter()
-        .append("text")
-        .attr("font-size", "8px")
-        .attr("fill", "white")
-        .attr("text-anchor", "middle")
-        .attr("font-weight", "500")
-        .attr("dominant-baseline", "central")
-        .attr("y", d => yLinearScale(d.healthcare))
-        .attr("x", d => xLinearScale(d.poverty))
-        .classed("state-abbr", true)
-        .text(d => d.abbr);
+  // When the browser loads, makeResponsive() is called.
+makeResponsive();
 
-    
+}).catch(function(error) {
+  console.log(error);
 });
+  
